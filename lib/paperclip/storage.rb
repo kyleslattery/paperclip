@@ -103,9 +103,7 @@ module Paperclip
           file.close
           ssh.exec! "mkdir -p #{File.dirname(path(style))}"
           logger.info("[paperclip] -> #{path(style)}")
-          puts 'uploading'
           ssh.sftp.upload!(file.path, path(style))
-          puts 'setting stat'
           ssh.sftp.setstat!(path(style), :permissions => 0644)
         end
         @queued_for_write = {}
