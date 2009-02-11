@@ -1,6 +1,88 @@
 require 'test/helper'
 
 class StorageTest < Test::Unit::TestCase
+  context "An attachment with Sftp storage" do
+    setup do
+      rebuild_model :storage => :sftp,
+                    :path => "/home/:attachment/:style/:basename.:extension",
+                    :url => "http://test.host/:attachment/:style/:basename.:extension",
+                    :sftp_host     => 'host',
+                    :sftp_user     => 'user',
+                    :sftp_password => 'password'
+    end
+
+    should "be extended by the S3 module" do
+      assert Dummy.new.avatar.is_a?(Paperclip::Storage::Sftp)
+    end
+
+    should "not be extended by the Filesystem module" do
+      assert ! Dummy.new.avatar.is_a?(Paperclip::Storage::Filesystem)
+    end
+    
+    should "not be extended by the S3 module" do
+      assert ! Dummy.new.avatar.is_a?(Paperclip::Storage::S3)
+    end
+
+    context "when assigned" do
+      setup do
+        @file = File.new(File.join(File.dirname(__FILE__), 'fixtures', '5k.png'), 'rb')
+        @dummy = Dummy.new
+        @dummy.avatar = @file
+      end
+
+      teardown { @file.close }
+
+      context "and saved" do
+        setup do          
+          @ssh_mock  = stub
+          @sftp_mock = stub
+          
+          @ssh_mock.stubs(:sftp).returns(@sftp_mock)
+          Net::SSH.expects(:start).with('host', 'user', :password => 'password').returns(@ssh_mock)
+          
+          @ssh_mock.expects(:exec!).with('mkdir -p /home/avatars/original')
+          @sftp_mock.expects(:upload!)
+          @sftp_mock.expects(:setstat!).with('/home/avatars/original/5k.png', :permissions => 0644)
+          
+          @dummy.save
+        end
+
+        should "succeed" do
+          assert true
+        end
+      end
+      
+      context "and remove" do
+        setup do
+          # @s3_mock     = stub
+          # @bucket_mock = stub
+          # RightAws::S3.expects(:new).with("12345", "54321", {}).returns(@s3_mock)
+          # @s3_mock.expects(:bucket).with("testing", true, "public-read").returns(@bucket_mock)
+          # @key_mock = stub
+          # @bucket_mock.expects(:key).at_least(2).returns(@key_mock)
+          # @key_mock.expects(:delete)
+          # @dummy.destroy_attached_files
+          
+          @ssh_mock  = stub
+          @sftp_mock = stub
+          
+          @ssh_mock.stubs(:sftp).returns(@sftp_mock)
+          Net::SSH.expects(:start).with('host', 'user', :password => 'password').returns(@ssh_mock)
+          
+          @ssh_mock.expects(:exec!).with('ls /home/avatars/original/5k.png 2>/dev/null').returns(true)
+          @sftp_mock.expects(:remove!).with('/home/avatars/original/5k.png')
+          @sftp_mock.stubs(:rmdir!)
+          
+          @dummy.destroy_attached_files
+        end
+
+        should "succeed" do
+          assert true
+        end
+      end
+    end
+  end
+  
   context "Parsing S3 credentials" do
     setup do
       rebuild_model :storage => :s3,

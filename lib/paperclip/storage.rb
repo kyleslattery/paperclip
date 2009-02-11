@@ -85,7 +85,7 @@ module Paperclip
       end
       
       def ssh
-        @ssh_connection ||= Net::SSH.start(@host, @user)
+        @ssh_connection ||= Net::SSH.start(@host, @user, :password => @password)
       end
       
       def exists?(style = default_style)
@@ -114,15 +114,15 @@ module Paperclip
         @queued_for_delete.each do |path|
           begin
             logger.info("[paperclip] -> #{path}")
-            ssh.sftp.remove(path)
+            ssh.sftp.remove!(path)
             FileUtils.rm(path) if File.exist?(path)
           rescue Net::SFTP::StatusException
             # ignore file-not-found, let everything else pass
           end
           begin
-            while(true)
+            while(path != '/')
               path = File.dirname(path)
-              sftp.rmdir(path)
+              ssh.sftp.rmdir!(path)
             end
           rescue Net::SFTP::StatusException
             # Stop trying to remove parent directories
