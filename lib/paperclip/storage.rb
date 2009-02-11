@@ -78,9 +78,9 @@ module Paperclip
         require 'net/sftp'
         
         base.instance_eval do
-          # TODO: Get this from options
-          @host = 'static.kyleslattery.com'
-          @user = 'kyleslat'
+          @host = @options[:sftp_host]
+          @user = @options[:sftp_user]
+          @password = @options[:sftp_password]
         end
       end
       
